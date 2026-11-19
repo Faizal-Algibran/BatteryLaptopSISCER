@@ -1,0 +1,15 @@
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Python & Django cache
+__pycache__/
+*.py[cod]
+*.sqlite3-journal
+*.log
+.env
+
+# IDE / VS Code
+.vscode/
+*.iml

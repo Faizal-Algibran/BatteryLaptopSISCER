@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoltSense Enterprise — Battery & AI Telemetry</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --sidebar-bg: #0b1120;
+            --sidebar-hover: #1e293b;
+            --bg-body: #f1f5f9;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --accent: #2563eb;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        /* Sidebar Layout */
+        .app-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            color: #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 1.2rem;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 1000;
+        }
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            padding: 1.75rem 2.25rem 5rem 2.25rem;
+        }
+        @media (max-width: 992px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 1.25rem 1.25rem 5rem 1.25rem; }
+        }
+
+        .brand-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 1.5rem;
+        }
+        .brand-badge {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        .nav-item-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.92rem;
+            margin-bottom: 0.4rem;
+            transition: all 0.2s;
+        }
+        .nav-item-link:hover, .nav-item-link.active {
+            background-color: var(--sidebar-hover);
+            color: #ffffff;
+        }
+        .nav-item-link.active {
+            border-left: 3px solid #3b82f6;
+        }
+
+        .system-status-box {
+            margin-top: auto;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 0.8rem;
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        /* Cards & Panels */
+        .panel-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.4rem;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+        }
+        .kpi-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .kpi-value {
+            font-size: 1.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-top: 0.35rem;
+        }
+        .kpi-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        /* Table Styling */
+        .table-custom thead th {
+            background-color: #f8fafc;
+            color: var(--text-secondary);
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.9rem 1rem;
+        }
+        .table-custom tbody td {
+            padding: 0.95rem 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+        }
+        .table-custom tbody tr:hover {
+            background-color: #f8fafc;
+        }
+        .status-pill {
+            padding: 5px 11px;
+            border-radius: 20px;
+            font-size: 0.76rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .pill-prima { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+        .pill-ganti { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+        .btn-delete-row {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid #fecaca;
+            background-color: #fef2f2;
+            color: #dc2626;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .btn-delete-row:hover {
+            background-color: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+        }
+
+        /* Search & Filter Inputs */
+        .filter-input {
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            font-size: 0.88rem;
+            padding: 0.5rem 0.9rem;
+        }
+        .filter-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* =========================================================
+           CORNER FLOATING CHATBOT BUTTON & DRAWER
+           ========================================================= */
+        .chat-fab {
+            position: fixed;
+            bottom: 14px;
+            right: 14px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #0f172a;
+            color: #38bdf8;
+            border: 1px solid rgba(255,255,255,0.14);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            cursor: pointer;
+            z-index: 1050;
+            transition: all 0.2s;
+        }
+        .chat-fab:hover {
+            background: #1e293b;
+            color: #ffffff;
+            transform: translateY(-2px) scale(1.04);
+        }
+        .chat-window {
+            position: fixed;
+            bottom: 72px;
+            right: 14px;
+            width: 360px;
+            max-width: calc(100vw - 28px);
+            height: 460px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 12px 36px rgba(15, 23, 42, 0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1050;
+            border: 1px solid var(--border-color);
+        }
+        .chat-header {
+            background: #0f172a;
+            color: white;
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .chat-body {
+            flex: 1;
+            padding: 12px 14px;
+            overflow-y: auto;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .msg-bot, .msg-user {
+            max-width: 85%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.84rem;
+            line-height: 1.4;
+            white-space: pre-line;
+            word-break: break-word;
+        }
+        .msg-bot {
+            background: #ffffff;
+            color: #1e293b;
+            align-self: flex-start;
+            border: 1px solid #e2e8f0;
+            border-bottom-left-radius: 4px;
+        }
+        .msg-user {
+            background: var(--accent);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .quick-prompts-container {
+            padding: 6px 10px;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .quick-prompts {
+            display: flex;
+            gap: 5px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .quick-prompts::-webkit-scrollbar {
+            display: none;
+        }
+        .quick-chip {
+            white-space: nowrap;
+            font-size: 0.72rem;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 3px 8px;
+            cursor: pointer;
+            color: #334155;
+            transition: all 0.15s;
+        }
+        .quick-chip:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        .chat-footer {
+            padding: 10px 12px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .chat-footer input {
+            flex: 1;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.84rem;
+            padding: 0.4rem 0.7rem;
+        }
+        .chat-footer input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-wrapper">
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+        <div class="brand-box">
+            <div class="brand-badge"><i class="bi bi-cpu-fill"></i></div>
+            <div>
+                <div class="fw-bold text-white fs-5" style="letter-spacing: -0.5px;">VoltSense</div>
+                <div style="font-size: 0.72rem; color: #64748b;">Predictive Telemetry</div>
+            </div>
+        </div>
+
+        <nav>
+            <a href="{% url 'dashboard' %}" class="nav-item-link active">
+                <i class="bi bi-grid-1x2-fill"></i> Overview Dashboard
+            </a>
+            <a href="{% url 'add_record' %}" class="nav-item-link">
+                <i class="bi bi-plus-square-fill"></i> Tambah Laptop
+            </a>
+            <a href="javascript:void(0)" onclick="toggleChat()" class="nav-item-link">
+                <i class="bi bi-robot"></i> Konsultan VoltBot AI
+            </a>
+        </nav>
+
+        <div class="system-status-box">
+            <div class="d-flex align-items-center gap-2 mb-1 text-white fw-semibold">
+                <span class="pulse-dot"></span> ML Engine Active
+            </div>
+            <div class="text-secondary" style="font-size: 0.74rem;">
+                Model: Decision Tree Classifier<br>
+                AI Core: Gemini 3.5 Flash Lite
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+        <!-- Header Bar -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            <div>
+                <h4 class="fw-bold mb-1">Battery Health & Lifecycle Analytics</h4>
+                <p class="text-secondary small mb-0">Pemantauan degradasi baterai berbasis Machine Learning dan diagnosa AI.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'add_record' %}" class="btn btn-primary fw-semibold px-3 py-2" style="border-radius: 10px; background-color: #2563eb;">
+                    <i class="bi bi-plus-lg me-1"></i> Tambah Laptop
+                </a>
+            </div>
+        </div>
+
+        <!-- KPI Metrics Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-xl-3 col-sm-6">
+                <div class="panel-card d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="kpi-title">Total Perangkat</div>
+                        <div class="kpi-value">{{ total_devices }}</div>
+                        <div class="small text-secondary mt-1">Tercatat di database</div>
+                    </div>
+                    <div class="kpi-icon-box bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-laptop"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-sm-6">
+                <div class="panel-card d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="kpi-title">Kondisi Prima</div>
+                        <div class="kpi-value text-success">{{ prima_count }}</div>
+                        <div class="small text-secondary mt-1">Kesehatan ≥ 75%</div>
+                    </div>
+                    <div class="kpi-icon-box bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-sm-6">
+                <div class="panel-card d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="kpi-title">Perlu Penggantian</div>
+                        <div class="kpi-value text-danger">{{ ganti_count }}</div>
+                        <div class="small text-secondary mt-1">Degradasi signifikan</div>
+                    </div>
+                    <div class="kpi-icon-box bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-exclamation-octagon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-sm-6">
+                <div class="panel-card d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="kpi-title">Rata-rata Health</div>
+                        <div class="kpi-value">{{ avg_health }}%</div>
+                        <div class="small text-secondary mt-1">Skor kesehatan global</div>
+                    </div>
+                    <div class="kpi-icon-box bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-battery-half"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Charts Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-lg-8">
+                <div class="panel-card h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="fw-bold mb-0">Rata-rata Battery Health per Merek (%)</h6>
+                            <small class="text-secondary">Perbandingan performa daya tahan baterai antar pabrikan</small>
+                        </div>
+                    </div>
+                    <div style="height: 240px;">
+                        <canvas id="brandBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="panel-card h-100">
+                    <div class="mb-3">
+                        <h6 class="fw-bold mb-0">Distribusi Status Prediksi</h6>
+                        <small class="text-secondary">Rasio kelayakan baterai aktif</small>
+                    </div>
+                    <div style="height: 240px; display: flex; align-items: center; justify-content: center;">
+                        <canvas id="statusDoughnutChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry Data Table -->
+        <div class="panel-card p-0 overflow-hidden">
+            <div class="p-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h6 class="fw-bold mb-0">Log Telemetri & Klasifikasi Perangkat</h6>
+                    <small class="text-secondary">Hasil prediksi real-time menggunakan Decision Tree</small>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <input type="text" id="searchInput" class="form-control filter-input" placeholder="Cari ID atau Brand..." onkeyup="filterTable()">
+                    <select id="statusFilter" class="form-select filter-input" style="width: 160px;" onchange="filterTable()">
+                        <option value="ALL">Semua Status</option>
+                        <option value="PRIMA">Prima</option>
+                        <option value="PERLU GANTI">Perlu Ganti</option>
+                    </select>
+                    <a href="{% url 'add_record' %}" class="btn btn-primary fw-semibold px-3 py-2" style="border-radius: 10px; background-color: #2563eb;">
+                        <i class="bi bi-plus-lg me-1"></i> Tambah Laptop
+                    </a>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-custom mb-0" id="telemetryTable">
+                    <thead>
+                        <tr>
+                            <th>Device ID</th>
+                            <th>Spesifikasi</th>
+                            <th>Pola Penggunaan</th>
+                            <th>Siklus & Usia</th>
+                            <th>Battery Health</th>
+                            <th>Suhu</th>
+                            <th>Klasifikasi ML</th>
+                            <th class="text-end">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in records %}
+                        <tr>
+                            <td class="fw-bold text-dark">{{ r.device_id }}</td>
+                            <td>
+                                <div class="fw-semibold">{{ r.brand }}</div>
+                                <div class="small text-secondary">{{ r.os }} • {{ r.model_year }}</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border fw-medium">{{ r.usage_type }}</span>
+                                <div class="small text-secondary mt-1">{{ r.daily_usage_hours }} jam/hari (Limit {{ r.avg_charge_limit_percent }}%)</div>
+                            </td>
+                            <td>
+                                <div class="fw-medium">{{ r.charging_cycles }} cycles</div>
+                                <div class="small text-secondary">{{ r.battery_age_months }} bulan</div>
+                            </td>
+                            <td style="width: 170px;">
+                                <div class="d-flex justify-content-between small fw-bold mb-1">
+                                    <span>{{ r.battery_health_percent }}%</span>
+                                </div>
+                                <div class="progress" style="height: 6px; border-radius: 6px; background-color: #e2e8f0;">
+                                    <div class="progress-bar {% if r.battery_health_percent >= 75 %}bg-success{% else %}bg-danger{% endif %}" 
+                                         style="width: {{ r.battery_health_percent }}%;"></div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if r.overheating_issues == 'Yes' %}
+                                    <span class="text-danger small fw-semibold"><i class="bi bi-thermometer-high"></i> Overheat</span>
+                                {% else %}
+                                    <span class="text-success small fw-semibold"><i class="bi bi-thermometer-half"></i> Normal</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if r.predicted_status == 'PRIMA' %}
+                                    <span class="status-pill pill-prima"><i class="bi bi-check-circle-fill"></i> PRIMA</span>
+                                {% else %}
+                                    <span class="status-pill pill-ganti"><i class="bi bi-exclamation-circle-fill"></i> PERLU GANTI</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <form action="{% url 'delete_record' r.pk %}" method="post" class="d-inline" onsubmit="return confirm('Hapus data laptop {{ r.device_id }} ({{ r.brand }}) dari daftar?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-delete-row" title="Hapus Laptop" aria-label="Hapus Laptop">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-secondary">
+                                <i class="bi bi-database-dash fs-2 d-block mb-2"></i>
+                                Belum ada data perangkat yang dianalisis.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Corner Floating Chatbot Button -->
+<button class="chat-fab" onclick="toggleChat()" title="Tanya VoltBot AI" aria-label="Tanya VoltBot AI">
+    <i class="bi bi-robot"></i>
+</button>
+
+<!-- AI Chatbot Drawer -->
+<div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+        <div class="d-flex align-items-center gap-2">
+            <div class="bg-primary bg-opacity-25 text-info rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                <i class="bi bi-robot" style="font-size: 0.85rem;"></i>
+            </div>
+            <div>
+                <div class="fw-bold" style="font-size: 0.85rem;">VoltBot Technical Advisor</div>
+                <div style="font-size: 0.68rem; color: #94a3b8;">Spesialis Perawatan & Hardware</div>
+            </div>
+        </div>
+        <button class="btn btn-sm text-secondary p-0" onclick="toggleChat()"><i class="bi bi-x-lg fs-6"></i></button>
+    </div>
+
+    <div class="chat-body" id="chatBody">
+        <div class="msg-bot">
+            Halo! Saya <strong>VoltBot</strong>. Silakan tanyakan apa saja mengenai kesehatan baterai laptop, cara mengurangi <em>overheating</em>, atau rekomendasi perawatan perangkat Anda.
+        </div>
+    </div>
+
+    <!-- Quick Prompt Chips -->
+    <div class="quick-prompts-container">
+        <div class="quick-prompts">
+            <span class="quick-chip" onclick="sendQuickPrompt('Bagaimana cara merawat baterai laptop agar awet?')">Tips awet baterai</span>
+            <span class="quick-chip" onclick="sendQuickPrompt('Apa itu charging cycle dan batas amannya?')">Batas charging cycle</span>
+            <span class="quick-chip" onclick="sendQuickPrompt('Cara mengatasi laptop cepat panas saat dipakai kerja?')">Atasi overheat</span>
+        </div>
+    </div>
+
+    <div class="chat-footer">
+        <input type="text" id="chatInput" placeholder="Tulis pertanyaan teknis..." onkeypress="if(event.key==='Enter') sendMessage()">
+        <button class="btn btn-primary px-2.5 py-1.5" style="border-radius: 8px;" onclick="sendMessage()">
+            <i class="bi bi-send-fill" style="font-size: 0.85rem;"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+    // 1. Inisialisasi Chart.js
+    const brandLabels = {{ brand_labels_json|safe }};
+    const brandData = {{ brand_health_json|safe }};
+    const primaCount = {{ prima_count }};
+    const gantiCount = {{ ganti_count }};
+
+    // Bar Chart (Brand Health)
+    const ctxBar = document.getElementById('brandBarChart').getContext('2d');
+    new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: brandLabels.length ? brandLabels : ['Belum ada data'],
+            datasets: [{
+                label: 'Rata-rata Battery Health (%)',
+                data: brandData.length ? brandData : [0],
+                backgroundColor: '#2563eb',
+                borderRadius: 6,
+                barThickness: 32
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Doughnut Chart (Status Distribution)
+    const ctxDoughnut = document.getElementById('statusDoughnutChart').getContext('2d');
+    new Chart(ctxDoughnut, {
+        type: 'doughnut',
+        data: {
+            labels: ['Prima', 'Perlu Ganti'],
+            datasets: [{
+                data: (primaCount + gantiCount > 0) ? [primaCount, gantiCount] : [1, 0],
+                backgroundColor: (primaCount + gantiCount > 0) ? ['#10b981', '#ef4444'] : ['#cbd5e1', '#e2e8f0'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '72%',
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } }
+            }
+        }
+    });
+
+    // 2. Filter Tabel Real-time
+    function filterTable() {
+        const searchVal = document.getElementById('searchInput').value.toLowerCase();
+        const statusVal = document.getElementById('statusFilter').value;
+        const rows = document.querySelectorAll('#telemetryTable tbody tr');
+
+        rows.forEach(row => {
+            if (row.cells.length < 2) return;
+            const textContent = row.textContent.toLowerCase();
+            const statusText = row.cells[6].textContent.trim();
+
+            const matchSearch = textContent.includes(searchVal);
+            const matchStatus = (statusVal === 'ALL') || statusText.includes(statusVal);
+
+            row.style.display = (matchSearch && matchStatus) ? '' : 'none';
+        });
+    }
+
+    // 3. Logika Chatbot
+    function toggleChat() {
+        const win = document.getElementById('chatWindow');
+        win.style.display = (win.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    function sendQuickPrompt(text) {
+        document.getElementById('chatInput').value = text;
+        sendMessage();
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('chatInput');
+        const chatBody = document.getElementById('chatBody');
+        const text = input.value.trim();
+        if (!text) return;
+
+        const userDiv = document.createElement('div');
+        userDiv.className = 'msg-user';
+        userDiv.textContent = text;
+        chatBody.appendChild(userDiv);
+        input.value = '';
+        chatBody.scrollTop = chatBody.scrollHeight;
+
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'msg-bot text-secondary fst-italic';
+        loadingDiv.textContent = 'Menganalisis pertanyaan...';
+        chatBody.appendChild(loadingDiv);
+        chatBody.scrollTop = chatBody.scrollHeight;
+
+        try {
+            const response = await fetch("{% url 'chatbot_api' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+            const data = await response.json();
+            loadingDiv.remove();
+
+            const botDiv = document.createElement('div');
+            botDiv.className = 'msg-bot';
+            botDiv.textContent = data.reply;
+            chatBody.appendChild(botDiv);
+        } catch (error) {
+            loadingDiv.textContent = 'Gagal terhubung ke server AI.';
+        }
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
+</script>
+</body>
+</html>
